@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Avatar,
   Button,
   Chip,
   Grid,
   MenuItem,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -26,13 +28,14 @@ import {
   Timeline,
 } from '@mui/icons-material';
 
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 
 import {
   getApplicantsByJob,
   updateApplicationStatus,
   getJobPipelineAnalytics,
 } from '../../api/jobs';
+import { getCandidateCvViewUrlForCompany } from '../../api/candidate';
 
 import EmptyState from '../../components/common/EmptyState';
 import ApplicationTimeline from './components/ApplicationTimeline';
@@ -52,6 +55,8 @@ export default function CompanyApplicantsPage() {
 
   const [rows, setRows] = useState([]);
   const [analytics, setAnalytics] = useState([]);
+  const [loadingCvId, setLoadingCvId] = useState(null);
+  const [cvError, setCvError] = useState('');
 
   const loadRows = async () => {
     try {
@@ -77,6 +82,18 @@ export default function CompanyApplicantsPage() {
       loadRows();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleViewCv = async (candidateUserId) => {
+    try {
+      setLoadingCvId(candidateUserId);
+      const data = await getCandidateCvViewUrlForCompany(candidateUserId);
+      window.open(data.url, '_blank', 'noreferrer');
+    } catch (err) {
+      setCvError(err?.response?.data?.message || 'No se pudo abrir el CV.');
+    } finally {
+      setLoadingCvId(null);
     }
   };
 
@@ -183,7 +200,13 @@ export default function CompanyApplicantsPage() {
                     </Avatar>
 
                     <Box flex={1}>
-                      <Typography variant="h6" fontWeight={800}>
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        component={RouterLink}
+                        to={`/company/candidates/${row.candidate_user_id}`}
+                        sx={{ color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+                      >
                         {row.name}
                       </Typography>
 
@@ -245,6 +268,22 @@ export default function CompanyApplicantsPage() {
                     </Box>
                   )}
 
+                  {row.screening_answers?.length > 0 && (
+                    <Box>
+                      <Typography fontWeight={800} mb={1}>Respuestas de preselección</Typography>
+                      <Stack spacing={1}>
+                        {row.screening_answers.map((answer, index) => (
+                          <Box key={index} sx={{ p: 1.5, bgcolor: "grey.50", borderRadius: 2 }}>
+                            <Typography variant="body2" fontWeight={700}>{answer.question_text}</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>
+                              {answer.answer_text}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
                   <Divider />
 
                   <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
@@ -275,8 +314,13 @@ export default function CompanyApplicantsPage() {
 
                   <Stack direction="row" spacing={1} mt={1}>
                     {row.cv_url && (
-                      <Button variant="contained" href={row.cv_url} target="_blank" fullWidth>
-                        Ver CV
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        disabled={loadingCvId === row.candidate_user_id}
+                        onClick={() => handleViewCv(row.candidate_user_id)}
+                      >
+                        {loadingCvId === row.candidate_user_id ? 'Abriendo...' : 'Ver CV'}
                       </Button>
                     )}
 
@@ -292,6 +336,16 @@ export default function CompanyApplicantsPage() {
           );
         })}
       </Grid>
+
+      <Snackbar
+        open={Boolean(cvError)}
+        autoHideDuration={4000}
+        onClose={() => setCvError('')}
+      >
+        <Alert severity="error" onClose={() => setCvError('')}>
+          {cvError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

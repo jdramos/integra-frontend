@@ -1,0 +1,1 @@
+import{_t as e,r as t,ut as n}from"./axios-DKPIlcz8.js";import{An as r}from"./index-8YB1zLjJ.js";e();var i=n();function a({title:e=`Sin registros`,text:n=`No hay información para mostrar.`}){return(0,i.jsxs)(r,{textAlign:`center`,py:6,children:[(0,i.jsx)(t,{variant:`h6`,fontWeight:800,children:e}),(0,i.jsx)(t,{color:`text.secondary`,children:n})]})}export{a as t};

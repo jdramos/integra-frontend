@@ -20,13 +20,16 @@ import SchoolIcon from "@mui/icons-material/School";
 import PaidIcon from "@mui/icons-material/Paid";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { applyToJob, getJobById } from "../api/jobs";
 import useAuth from "../auth/AuthContext";
+import ApplicationQuestionsDialog from "../components/jobs/ApplicationQuestionsDialog";
 
 export default function JobDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [job, setJob] = useState(null);
@@ -35,6 +38,7 @@ export default function JobDetailsPage() {
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [questionsOpen, setQuestionsOpen] = useState(false);
 
   useEffect(() => {
     loadJob();
@@ -55,7 +59,7 @@ export default function JobDetailsPage() {
     }
   };
 
-  const handleApply = async () => {
+  const handleApply = async (answers = []) => {
     setMessage("");
     setError("");
 
@@ -64,10 +68,12 @@ export default function JobDetailsPage() {
 
       await applyToJob(id, {
         cover_letter: "Estoy interesado en esta vacante.",
+        answers,
       });
 
       setAlreadyApplied(true);
       setMessage("Postulación enviada correctamente.");
+      setQuestionsOpen(false);
     } catch (err) {
       console.error(err);
       setError(
@@ -77,6 +83,17 @@ export default function JobDetailsPage() {
     } finally {
       setApplying(false);
     }
+  };
+
+  const handleContactCompany = () => {
+    if (!job?.company_id) return;
+    navigate("/candidate/messages", {
+      state: {
+        startCompanyId: job.company_id,
+        startCompanyName: job.company_name,
+        startCompanyPhoto: job.logo_url,
+      },
+    });
   };
 
   const salaryText = getSalaryText(job);
@@ -219,13 +236,15 @@ export default function JobDetailsPage() {
                   variant="contained"
                   size="large"
                   startIcon={<SendIcon />}
-                  onClick={handleApply}
-                  disabled={applying || alreadyApplied}
+                  onClick={() => job.screening_questions?.length ? setQuestionsOpen(true) : handleApply()}
+                  disabled={applying || alreadyApplied || job.status !== "OPEN" || (job.expires_at && String(job.expires_at).slice(0, 10) < new Date().toISOString().slice(0, 10))}
                 >
                   {alreadyApplied
                     ? "Ya aplicaste"
                     : applying
                     ? "Enviando..."
+                    : job.status !== "OPEN" || (job.expires_at && String(job.expires_at).slice(0, 10) < new Date().toISOString().slice(0, 10))
+                    ? "Vacante vencida"
                     : "Aplicar gratis"}
                 </Button>
               ) : !user ? (
@@ -238,6 +257,17 @@ export default function JobDetailsPage() {
                   Iniciar sesión para aplicar
                 </Button>
               ) : null}
+
+              {user?.role === "CANDIDATE" && job.company_id && !job.is_company_confidential && (
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={<ChatBubbleOutlineIcon />}
+                  onClick={handleContactCompany}
+                >
+                  Contactar a la empresa
+                </Button>
+              )}
 
               <Button
                 variant="outlined"
@@ -308,6 +338,13 @@ export default function JobDetailsPage() {
           </Paper>
         </Grid>
       </Grid>
+      <ApplicationQuestionsDialog
+        job={job}
+        open={questionsOpen}
+        loading={applying}
+        onClose={() => setQuestionsOpen(false)}
+        onSubmit={handleApply}
+      />
     </Box>
   );
 }

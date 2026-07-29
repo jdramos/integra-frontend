@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import { Link as RouterLink } from "react-router-dom";
 import EventIcon from "@mui/icons-material/Event";
 import WorkIcon from "@mui/icons-material/Work";
 import PersonIcon from "@mui/icons-material/Person";
@@ -80,7 +81,17 @@ export default function InterviewDetailDialog({
               </Avatar>
 
               <Box flex={1}>
-                <Typography fontWeight={900} fontSize={18}>
+                <Typography
+                  fontWeight={900}
+                  fontSize={18}
+                  component={interview.candidate_id ? RouterLink : "p"}
+                  to={interview.candidate_id ? `/company/candidates/${interview.candidate_id}` : undefined}
+                  sx={
+                    interview.candidate_id
+                      ? { color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }
+                      : undefined
+                  }
+                >
                   {interview.candidate_name || "Candidato"}
                 </Typography>
 

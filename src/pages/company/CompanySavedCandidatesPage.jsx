@@ -57,7 +57,14 @@ export default function CompanySavedCandidatesPage() {
                 </Avatar>
 
                 <div>
-                  <Typography variant="h6">{row.name}</Typography>
+                  <Typography
+                    variant="h6"
+                    component={RouterLink}
+                    to={`/company/candidates/${row.id}`}
+                    sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {row.name}
+                  </Typography>
                   <Typography color="primary.main" fontWeight={800}>
                     {row.headline}
                   </Typography>

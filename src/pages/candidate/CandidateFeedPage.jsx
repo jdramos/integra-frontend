@@ -3,15 +3,23 @@ import { Avatar, Button, Grid, Paper, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import WorkIcon from '@mui/icons-material/Work';
 import { getPublicJobs } from '../../api/jobs';
-import { getMyProfile } from '../../api/candidate';
+import { getCandidateEducation, getCandidateExperiences, getMyProfile } from '../../api/candidate';
+import OnboardingChecklist from '../../components/common/OnboardingChecklist';
 
 export default function CandidateFeedPage() {
   const [jobs, setJobs] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [experiences, setExperiences] = useState([]);
+  const [education, setEducation] = useState([]);
 
   useEffect(() => {
     getPublicJobs().then(setJobs);
-    getMyProfile().then(setProfile);
+    Promise.all([getMyProfile(), getCandidateExperiences(), getCandidateEducation()])
+      .then(([profileData, experienceData, educationData]) => {
+        setProfile(profileData);
+        setExperiences(experienceData);
+        setEducation(educationData);
+      });
   }, []);
 
   return (
@@ -32,6 +40,17 @@ export default function CandidateFeedPage() {
 
       <Grid item xs={12} md={6}>
         <Stack spacing={2}>
+          <OnboardingChecklist
+            title="Completa tu perfil profesional"
+            description="Un perfil completo mejora tu visibilidad ante las empresas."
+            steps={[
+              { label: "Agrega titular, ubicación y resumen", complete: Boolean(profile?.headline && profile?.location && profile?.summary), to: "/candidate/profile" },
+              { label: "Sube tu currículum", complete: Boolean(profile?.cv_url), to: "/candidate/profile" },
+              { label: "Registra tu experiencia laboral", complete: experiences.length > 0, to: "/candidate/profile" },
+              { label: "Registra tu formación académica", complete: education.length > 0, to: "/candidate/profile" },
+              { label: "Define tus preferencias laborales", complete: Boolean(profile?.professional_area && profile?.job_type && profile?.work_mode), to: "/candidate/profile" },
+            ]}
+          />
           <Paper sx={{ p: 3, borderRadius: 4 }}>
             <Typography variant="h5">Empleos para ti</Typography>
             <Typography color="text.secondary">Vacantes recientes según tu perfil profesional.</Typography>

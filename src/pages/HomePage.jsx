@@ -824,7 +824,7 @@ function Footer({ navigate }) {
         <Grid container spacing={4}>
           <Grid item xs={12} md={5}>
             <Typography variant="h5" fontWeight={900}>
-              JobBoard SaaS
+              Integra RH
             </Typography>
             <Typography sx={{ mt: 1, color: "rgba(255,255,255,0.72)" }}>
               Conectando empresas y talento con una experiencia moderna,
@@ -835,15 +835,14 @@ function Footer({ navigate }) {
           <Grid item xs={12} md={2}>
             <Typography fontWeight={900}>Plataforma</Typography>
             <FooterLink text="Vacantes" onClick={() => navigate("/jobs")} />
-            <FooterLink text="Registro" onClick={() => navigate("/register")} />
+            <FooterLink text="Registro" onClick={() => navigate("/register-candidate")} />
             <FooterLink text="Login" onClick={() => navigate("/login")} />
           </Grid>
 
           <Grid item xs={12} md={2}>
             <Typography fontWeight={900}>Usuarios</Typography>
-            <FooterLink text="Candidatos" onClick={() => navigate("/register")} />
-            <FooterLink text="Empresas" onClick={() => navigate("/register")} />
-            <FooterLink text="Planes" onClick={() => navigate("/plans")} />
+            <FooterLink text="Candidatos" onClick={() => navigate("/register-candidate")} />
+            <FooterLink text="Empresas" onClick={() => navigate("/register-company")} />
           </Grid>
 
           <Grid item xs={12} md={3}>
@@ -852,7 +851,7 @@ function Footer({ navigate }) {
               Managua, Nicaragua
             </Typography>
             <Typography sx={{ color: "rgba(255,255,255,0.72)" }}>
-              soporte@jobboard.com
+              info@integrarhni.com
             </Typography>
           </Grid>
         </Grid>
@@ -860,7 +859,7 @@ function Footer({ navigate }) {
         <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.16)" }} />
 
         <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.65)" }}>
-          © {new Date().getFullYear()} JobBoard SaaS. Todos los derechos reservados.
+          © {new Date().getFullYear()} Integra RH. Todos los derechos reservados.
         </Typography>
       </Container>
     </Box>

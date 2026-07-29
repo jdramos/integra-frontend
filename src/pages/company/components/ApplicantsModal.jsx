@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
+import { Link as RouterLink } from "react-router-dom";
 import { getJobApplicants, updateApplicationStatus } from "../../../api/company";
 
 const primary = "#0057B8";
@@ -142,7 +143,16 @@ export default function ApplicantsModal({ open, onClose, job }) {
                     </Avatar>
 
                     <Box>
-                      <Typography fontWeight={900}>
+                      <Typography
+                        fontWeight={900}
+                        component={item.candidate_user_id ? RouterLink : "p"}
+                        to={item.candidate_user_id ? `/company/candidates/${item.candidate_user_id}` : undefined}
+                        sx={
+                          item.candidate_user_id
+                            ? { color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }
+                            : undefined
+                        }
+                      >
                         {item.name || item.candidate_name || "Candidato"}
                       </Typography>
 

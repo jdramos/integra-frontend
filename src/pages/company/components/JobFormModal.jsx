@@ -20,6 +20,8 @@ import WorkIcon from "@mui/icons-material/Work";
 import SaveIcon from "@mui/icons-material/Save";
 
 import { createCompanyJob, updateCompanyJob } from "../../../api/company";
+import useCatalog from "../../../hooks/useCatalog";
+import CreatableCatalogField from "../../../components/common/CreatableCatalogField";
 
 const primary = "#0057B8";
 
@@ -43,6 +45,9 @@ const initialState = {
   requires_vehicle: false,
   requires_travel: false,
   allows_relocation: false,
+  is_company_confidential: false,
+  screening_questions: [],
+  expires_at: "",
 };
 
 export default function JobFormModal({
@@ -50,11 +55,25 @@ export default function JobFormModal({
   onClose,
   onSaved,
   editingJob = null,
+  companies = null,
+  createFn = createCompanyJob,
+  updateFn = updateCompanyJob,
 }) {
   const [form, setForm] = useState(initialState);
+  const [companyId, setCompanyId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const { items: modalityOptions } = useCatalog("job_modality");
+  const { items: jobTypeOptions } = useCatalog("job_types_posting");
+  const { labels: experienceLevelOptions } = useCatalog("experience_levels");
+  const { labels: departments } = useCatalog("nicaragua_departments");
+  const { labels: professionalAreas } = useCatalog("professional_areas");
+  const { labels: educationLevels } = useCatalog("education_levels");
+  const { labels: availabilityOptions } = useCatalog("availability_options");
+  const { labels: languageOptions } = useCatalog("languages");
+  const { labels: skillOptions } = useCatalog("skills");
 
   useEffect(() => {
     if (editingJob) {
@@ -78,11 +97,20 @@ export default function JobFormModal({
         requires_vehicle: Boolean(editingJob.requires_vehicle),
         requires_travel: Boolean(editingJob.requires_travel),
         allows_relocation: Boolean(editingJob.allows_relocation),
+        is_company_confidential: Boolean(editingJob.is_company_confidential),
+        screening_questions: Array.isArray(editingJob.screening_questions)
+          ? editingJob.screening_questions.map((question) => ({
+              question_text: question.question_text || "",
+              question_type: question.question_type || "TEXT",
+            }))
+          : [],
+        expires_at: editingJob.expires_at ? String(editingJob.expires_at).slice(0, 10) : "",
       });
     } else {
       setForm(initialState);
     }
 
+    setCompanyId(editingJob?.company_id ? String(editingJob.company_id) : "");
     setError("");
     setSuccess("");
   }, [editingJob, open]);
@@ -111,6 +139,15 @@ export default function JobFormModal({
         setError("La descripción de la vacante es requerida");
         return;
       }
+      if (!form.expires_at || form.expires_at < new Date().toISOString().slice(0, 10)) {
+        setError("Indica una fecha de vencimiento válida");
+        return;
+      }
+
+      if (companies && !companyId) {
+        setError("Selecciona la empresa dueña de la vacante");
+        return;
+      }
 
       const payload = {
         ...form,
@@ -122,12 +159,13 @@ export default function JobFormModal({
         requires_vehicle: form.requires_vehicle ? 1 : 0,
         requires_travel: form.requires_travel ? 1 : 0,
         allows_relocation: form.allows_relocation ? 1 : 0,
+        ...(companies ? { company_id: Number(companyId) } : {}),
       };
 
       if (editingJob?.id) {
-        await updateCompanyJob(editingJob.id, payload);
+        await updateFn(editingJob.id, payload);
       } else {
-        await createCompanyJob(payload);
+        await createFn(payload);
       }
 
       setSuccess(
@@ -193,6 +231,25 @@ export default function JobFormModal({
 
         <Stack component="form" spacing={2} onSubmit={handleSubmit}>
           <Grid container spacing={2}>
+            {companies && (
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  label="Empresa"
+                  fullWidth
+                  required
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                >
+                  {companies.map((company) => (
+                    <MenuItem key={company.id} value={String(company.id)}>
+                      {company.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <TextField
                 label="Título de la vacante"
@@ -201,6 +258,11 @@ export default function JobFormModal({
                 value={form.title}
                 onChange={(e) => setValue("title", e.target.value)}
               />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField label="Fecha de vencimiento" type="date" fullWidth required value={form.expires_at}
+                onChange={(e) => setValue("expires_at", e.target.value)} InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().slice(0, 10) }} />
             </Grid>
 
             <Grid item xs={12}>
@@ -216,12 +278,8 @@ export default function JobFormModal({
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <TextField
-                label="Ubicación"
-                fullWidth
-                value={form.location}
-                onChange={(e) => setValue("location", e.target.value)}
-              />
+              <CreatableCatalogField category="nicaragua_departments" label="Ubicación" options={departments}
+                value={form.location} onChange={(value) => setValue("location", value)} />
             </Grid>
 
             <Grid item xs={12} md={3}>
@@ -229,15 +287,17 @@ export default function JobFormModal({
                 select
                 label="Modalidad"
                 fullWidth
-                value={form.modality}
+                value={modalityOptions.some((item)=>item.value===form.modality) ? form.modality : ''}
                 onChange={(e) => {
                   setValue("modality", e.target.value);
                   setValue("work_mode", e.target.value);
                 }}
               >
-                <MenuItem value="PRESENCIAL">Presencial</MenuItem>
-                <MenuItem value="REMOTO">Remoto</MenuItem>
-                <MenuItem value="HIBRIDO">Híbrido</MenuItem>
+                {modalityOptions.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.label}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
 
@@ -249,38 +309,22 @@ export default function JobFormModal({
                 value={form.job_type}
                 onChange={(e) => setValue("job_type", e.target.value)}
               >
-                <MenuItem value="FULL_TIME">Tiempo completo</MenuItem>
-                <MenuItem value="PART_TIME">Medio tiempo</MenuItem>
-                <MenuItem value="CONTRACT">Contrato</MenuItem>
-                <MenuItem value="TEMPORARY">Temporal</MenuItem>
-                <MenuItem value="INTERNSHIP">Pasantía</MenuItem>
+                {jobTypeOptions.map((item) => (
+                  <MenuItem key={item.value} value={item.value}>
+                    {item.label}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <TextField
-                label="Área profesional"
-                fullWidth
-                value={form.professional_area}
-                onChange={(e) => setValue("professional_area", e.target.value)}
-                placeholder="Ej: Contabilidad, Ventas, Tecnología"
-              />
+              <CreatableCatalogField category="professional_areas" label="Área profesional" options={professionalAreas}
+                value={form.professional_area} onChange={(value) => setValue("professional_area", value)} />
             </Grid>
 
             <Grid item xs={12} md={3}>
-              <TextField
-                select
-                label="Nivel experiencia"
-                fullWidth
-                value={form.experience_level}
-                onChange={(e) => setValue("experience_level", e.target.value)}
-              >
-                <MenuItem value="">No especificado</MenuItem>
-                <MenuItem value="JUNIOR">Junior</MenuItem>
-                <MenuItem value="MID">Intermedio</MenuItem>
-                <MenuItem value="SENIOR">Senior</MenuItem>
-                <MenuItem value="MANAGER">Gerencial</MenuItem>
-              </TextField>
+              <CreatableCatalogField category="experience_levels" label="Nivel experiencia" options={experienceLevelOptions}
+                value={form.experience_level} onChange={(value) => setValue("experience_level", value)} />
             </Grid>
 
             <Grid item xs={12} md={3}>
@@ -294,13 +338,8 @@ export default function JobFormModal({
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <TextField
-                label="Escolaridad requerida"
-                fullWidth
-                value={form.education_level}
-                onChange={(e) => setValue("education_level", e.target.value)}
-                placeholder="Ej: Universidad, Técnico, Secundaria"
-              />
+              <CreatableCatalogField category="education_levels" label="Escolaridad requerida" options={educationLevels}
+                value={form.education_level} onChange={(value) => setValue("education_level", value)} />
             </Grid>
 
             <Grid item xs={12} md={4}>
@@ -324,37 +363,99 @@ export default function JobFormModal({
             </Grid>
 
             <Grid item xs={12}>
-              <TextField
-                label="Habilidades / requisitos"
-                fullWidth
-                multiline
-                minRows={4}
-                value={form.skills_required}
-                onChange={(e) => setValue("skills_required", e.target.value)}
-                placeholder="Ej: Excel avanzado, atención al cliente, experiencia en créditos, manejo de caja..."
-              />
+              <CreatableCatalogField multiple category="skills" label="Habilidades / requisitos" options={skillOptions}
+                value={form.skills_required ? form.skills_required.split(",").map((item) => item.trim()).filter(Boolean) : []}
+                onChange={(values) => setValue("skills_required", values.join(", "))} />
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <TextField
-                label="Disponibilidad requerida"
-                fullWidth
-                value={form.availability_required}
-                onChange={(e) =>
-                  setValue("availability_required", e.target.value)
-                }
-                placeholder="Ej: Inmediata, 15 días, horario flexible"
-              />
+              <CreatableCatalogField category="availability_options" label="Disponibilidad requerida" options={availabilityOptions}
+                value={form.availability_required} onChange={(value) => setValue("availability_required", value)} />
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <TextField
-                label="Idiomas requeridos"
-                fullWidth
-                value={form.languages_required}
-                onChange={(e) => setValue("languages_required", e.target.value)}
-                placeholder="Ej: Español, Inglés básico"
-              />
+              <CreatableCatalogField multiple category="languages" label="Idiomas requeridos" options={languageOptions}
+                value={form.languages_required ? form.languages_required.split(",").map((item) => item.trim()).filter(Boolean) : []}
+                onChange={(values) => setValue("languages_required", values.join(", "))} />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Box>
+                    <Typography fontWeight={900}>Preguntas para los candidatos</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Se solicitarán obligatoriamente al enviar la postulación (máximo 10).
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    disabled={form.screening_questions.length >= 10}
+                    onClick={() => setValue("screening_questions", [
+                      ...form.screening_questions,
+                      { question_text: "", question_type: "TEXT" },
+                    ])}
+                  >
+                    Agregar pregunta
+                  </Button>
+                </Stack>
+
+                <Stack spacing={1.5}>
+                  {form.screening_questions.map((question, index) => (
+                    <Stack key={index} direction={{ xs: "column", md: "row" }} spacing={1}>
+                      <TextField
+                        fullWidth
+                        required
+                        label={`Pregunta ${index + 1}`}
+                        value={question.question_text}
+                        inputProps={{ maxLength: 500 }}
+                        onChange={(e) => {
+                          const next = [...form.screening_questions];
+                          next[index] = { ...next[index], question_text: e.target.value };
+                          setValue("screening_questions", next);
+                        }}
+                      />
+                      <TextField
+                        select
+                        label="Tipo"
+                        value={question.question_type}
+                        sx={{ minWidth: 150 }}
+                        onChange={(e) => {
+                          const next = [...form.screening_questions];
+                          next[index] = { ...next[index], question_type: e.target.value };
+                          setValue("screening_questions", next);
+                        }}
+                      >
+                        <MenuItem value="TEXT">Texto</MenuItem>
+                        <MenuItem value="YES_NO">Sí / No</MenuItem>
+                      </TextField>
+                      <Button
+                        color="error"
+                        onClick={() => setValue("screening_questions", form.screening_questions.filter((_, itemIndex) => itemIndex !== index))}
+                      >
+                        Eliminar
+                      </Button>
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "grey.50" }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.is_company_confidential}
+                      onChange={(e) => setValue("is_company_confidential", e.target.checked)}
+                    />
+                  }
+                  label="Publicar como empresa confidencial"
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Si activas esta opción, los candidatos no verán el nombre, logotipo, descripción ni sitio web de tu empresa en esta vacante.
+                </Typography>
+              </Box>
             </Grid>
 
             <Grid item xs={12}>

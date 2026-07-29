@@ -10,6 +10,7 @@ import {
   Grid,
   InputAdornment,
   LinearProgress,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -22,6 +23,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import RestoreIcon from '@mui/icons-material/Restore';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { getMyCompany, updateMyCompany } from '../../api/company';
+import useCatalog from '../../hooks/useCatalog';
 
 const emptyForm = {
   name: '',
@@ -50,6 +52,7 @@ export default function CompanyProfilePage() {
 
   const [originalForm, setOriginalForm] = useState(emptyForm);
   const [form, setForm] = useState(emptyForm);
+  const { labels: departments } = useCatalog('nicaragua_departments');
 
   const setValue = (field, value) => {
     setMessage('');
@@ -299,6 +302,7 @@ export default function CompanyProfilePage() {
             />
 
             <TextField
+              select
               label="Ubicación"
               value={form.location}
               onChange={(e) => setValue('location', e.target.value)}
@@ -310,7 +314,11 @@ export default function CompanyProfilePage() {
                   </InputAdornment>
                 )
               }}
-            />
+            >
+              {departments.map((dept) => (
+                <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+              ))}
+            </TextField>
 
             <TextField
               label="URL del logo"

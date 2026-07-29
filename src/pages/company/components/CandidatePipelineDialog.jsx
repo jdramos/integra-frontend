@@ -19,6 +19,7 @@ import {
   TextField,
 } from "@mui/material";
 
+import { Link as RouterLink } from "react-router-dom";
 import PersonIcon from "@mui/icons-material/Person";
 import WorkIcon from "@mui/icons-material/Work";
 import EventIcon from "@mui/icons-material/Event";
@@ -28,6 +29,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import {
   getCandidateNotes,
   createCandidateNote,
+  getCandidateCvViewUrlForCompany,
 } from "../../../api/candidate";
 
 import { getCandidateProfile } from "../../../api/candidate";
@@ -64,6 +66,8 @@ export default function CandidatePipelineDialog({
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [loadingCv, setLoadingCv] = useState(false);
+  const [cvError, setCvError] = useState("");
 
 const candidateId =
   candidate?.candidate_id ||
@@ -105,6 +109,35 @@ useEffect(() => {
   const applications = data?.applications || [];
   const interviews = data?.interviews || [];
   const cvUrl = getFileUrl(profile.cv_url);
+
+  const handleOpenCv = async () => {
+    try {
+      setLoadingCv(true);
+      setCvError("");
+      const result = await getCandidateCvViewUrlForCompany(candidateId);
+      window.open(result.url, "_blank", "noreferrer");
+    } catch (err) {
+      setCvError(err?.response?.data?.message || "No se pudo abrir el CV.");
+    } finally {
+      setLoadingCv(false);
+    }
+  };
+
+  const handleDownloadCv = async () => {
+    try {
+      setLoadingCv(true);
+      setCvError("");
+      const result = await getCandidateCvViewUrlForCompany(candidateId);
+      const link = document.createElement("a");
+      link.href = result.url;
+      link.download = result.original_name || "cv";
+      link.click();
+    } catch (err) {
+      setCvError(err?.response?.data?.message || "No se pudo descargar el CV.");
+    } finally {
+      setLoadingCv(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -150,7 +183,13 @@ useEffect(() => {
                 </Avatar>
 
                 <Box flex={1}>
-                  <Typography fontWeight={900} fontSize={20}>
+                  <Typography
+                    fontWeight={900}
+                    fontSize={20}
+                    component={RouterLink}
+                    to={`/company/candidates/${candidateId}`}
+                    sx={{ color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+                  >
                     {user.name || candidate.candidate_name}
                   </Typography>
 
@@ -186,7 +225,16 @@ useEffect(() => {
                     icon={<PersonIcon color="primary" />}
                     title="Información general"
                     rows={[
-                      ["Nombre", user.name || candidate.candidate_name],
+                      [
+                        "Nombre",
+                        <RouterLink
+                          key="name-link"
+                          to={`/company/candidates/${candidateId}`}
+                          style={{ color: "inherit" }}
+                        >
+                          {user.name || candidate.candidate_name}
+                        </RouterLink>,
+                      ],
                       ["Correo", user.email || candidate.candidate_email],
                       ["Teléfono", profile.phone || "No registrado"],
                       ["Ubicación", profile.location || "No registrada"],
@@ -300,25 +348,21 @@ useEffect(() => {
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="outlined"
-                            component="a"
-                            href={cvUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                            onClick={handleOpenCv}
+                            disabled={loadingCv}
                             sx={{
                               borderRadius: 3,
                               textTransform: "none",
                               fontWeight: 800,
                             }}
                           >
-                            Abrir CV
+                            {loadingCv ? "Abriendo..." : "Abrir CV"}
                           </Button>
 
                           <Button
                             variant="contained"
-                            component="a"
-                            href={cvUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                            onClick={handleDownloadCv}
+                            disabled={loadingCv}
                             sx={{
                               borderRadius: 3,
                               textTransform: "none",
@@ -331,6 +375,12 @@ useEffect(() => {
                         </Stack>
                       )}
                     </Stack>
+
+                    {cvError && (
+                      <Alert severity="error" sx={{ mt: 1.5, borderRadius: 3 }}>
+                        {cvError}
+                      </Alert>
+                    )}
                   </Box>
                 </Grid>
               </Grid>

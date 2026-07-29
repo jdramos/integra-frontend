@@ -8,19 +8,20 @@ import {
   Stack,
   Typography
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import WorkIcon from '@mui/icons-material/Work';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ShareIcon from '@mui/icons-material/Share';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { Link as RouterLink } from 'react-router-dom';
-
-const brandBlue = '#0B66C3';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 export default function JobDetailPanel({
   job,
   user,
   onApply,
+  onReport,
   formatDate,
   getDaysAgo,
   getJobStatusLabel,
@@ -32,11 +33,25 @@ export default function JobDetailPanel({
   savedJobs,
   toggleSaveJob
 }) {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const softPrimary = alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.08);
+
+  const handleContactCompany = () => {
+    if (!job?.company_id) return;
+    navigate('/candidate/messages', {
+      state: {
+        startCompanyId: job.company_id,
+        startCompanyName: job.company_name,
+        startCompanyPhoto: job.logo_url,
+      },
+    });
+  };
   if (!job) {
     return (
       <Box
         sx={{
-          bgcolor: '#fff',
+          bgcolor: 'background.paper',
           borderRadius: 4,
           border: '1px solid rgba(15,23,42,0.08)',
           height: 'calc(100vh - 100px)',
@@ -63,7 +78,7 @@ export default function JobDetailPanel({
   return (
     <Box
       sx={{
-        bgcolor: '#fff',
+        bgcolor: 'background.paper',
         borderRadius: 4,
         border: '1px solid rgba(15,23,42,0.08)',
         overflow: 'hidden',
@@ -83,7 +98,9 @@ export default function JobDetailPanel({
           sx={{
             px: 4,
             py: 3,
-            background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)'
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.primary.dark, 0.14)} 100%)`
+              : 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)'
           }}
         >
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -94,7 +111,7 @@ export default function JobDetailPanel({
                 sx={{
                   width: 58,
                   height: 58,
-                  bgcolor: brandBlue,
+                  bgcolor: 'primary.main',
                   borderRadius: 3,
                   boxShadow: '0 8px 18px rgba(11,102,195,0.18)'
                 }}
@@ -103,7 +120,7 @@ export default function JobDetailPanel({
               </Avatar>
 
               <Box>
-                <Typography fontWeight={800} color={brandBlue}>
+                <Typography fontWeight={800} color="primary.main">
                   {job.company_name}
                 </Typography>
 
@@ -134,11 +151,11 @@ export default function JobDetailPanel({
           </Stack>
 
           <Stack direction="row" spacing={1} mt={3} flexWrap="wrap" useFlexGap>
-            <Chip label={job.modality || 'Sin modalidad'} sx={{ fontWeight: 700, bgcolor: '#EEF6FF' }} />
-            <Chip label={`${job.experience_years || 0}+ años experiencia`} sx={{ fontWeight: 700, bgcolor: '#EEF6FF' }} />
+            <Chip label={job.modality || 'Sin modalidad'} sx={{ fontWeight: 700, bgcolor: softPrimary }} />
+            <Chip label={`${job.experience_years || 0}+ años experiencia`} sx={{ fontWeight: 700, bgcolor: softPrimary }} />
 
             {job.education_level && (
-              <Chip label={job.education_level} sx={{ fontWeight: 700, bgcolor: '#EEF6FF' }} />
+              <Chip label={job.education_level} sx={{ fontWeight: 700, bgcolor: softPrimary }} />
             )}
 
             <Chip
@@ -153,7 +170,7 @@ export default function JobDetailPanel({
             {user?.role === 'CANDIDATE' ? (
               <Button
                 variant="contained"
-                onClick={() => onApply(job.id)}
+                onClick={() => onApply(job)}
                 sx={{
                   borderRadius: 999,
                   px: 3,
@@ -197,6 +214,23 @@ export default function JobDetailPanel({
             >
               {saved ? 'Guardado' : 'Guardar'}
             </Button>
+            {user?.role === 'CANDIDATE' && job.company_id && !job.is_company_confidential && (
+              <Button
+                variant="outlined"
+                startIcon={<ChatBubbleOutlineIcon />}
+                onClick={handleContactCompany}
+                sx={{
+                  borderRadius: 999,
+                  px: 3,
+                  py: 1,
+                  fontWeight: 900,
+                  textTransform: 'none'
+                }}
+              >
+                Contactar a la empresa
+              </Button>
+            )}
+            {user?.role === 'CANDIDATE' && <Button color="error" onClick={() => onReport?.(job.id)}>Reportar</Button>}
           </Stack>
 
           <Stack direction="row" spacing={1} mt={3} flexWrap="wrap" useFlexGap>

@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
@@ -72,7 +73,16 @@ export default function CandidateCard({
                 spacing={1}
                 alignItems={{ xs: "flex-start", sm: "center" }}
               >
-                <Typography fontWeight={900}>
+                <Typography
+                  fontWeight={900}
+                  component={candidate.id ? RouterLink : "span"}
+                  to={candidate.id ? `/company/candidates/${candidate.id}` : undefined}
+                  sx={
+                    candidate.id
+                      ? { color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }
+                      : undefined
+                  }
+                >
                   {candidate.name || "Candidato"}
                 </Typography>
 

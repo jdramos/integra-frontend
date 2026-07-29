@@ -28,7 +28,8 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Link as RouterLink } from 'react-router-dom';
-import { createJob, getMyJobs, updateJob, updateJobStatus } from '../../api/jobs';
+import { createJob, getMyJobs, repostJob, updateJob, updateJobStatus } from '../../api/jobs';
+import useCatalog from '../../hooks/useCatalog';
 
 const initialForm = {
   title: '',
@@ -39,19 +40,16 @@ const initialForm = {
   salary_max: '',
   experience_years: '',
   education_level: '',
-  skills_required: ''
+  skills_required: '',
+  expires_at: ''
 };
-
-const modalityOptions = [
-  { value: 'PRESENCIAL', label: 'Presencial' },
-  { value: 'REMOTO', label: 'Remoto' },
-  { value: 'HIBRIDO', label: 'Híbrido' }
-];
 
 export default function CompanyJobsPage() {
   const [jobs, setJobs] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingJobId, setEditingJobId] = useState(null);
+  const { items: modalityOptions } = useCatalog('job_modality');
+  const { labels: departments } = useCatalog('nicaragua_departments');
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -100,6 +98,8 @@ export default function CompanyJobsPage() {
     if (!form.title.trim()) return 'El título del puesto es obligatorio.';
     if (!form.description.trim()) return 'La descripción es obligatoria.';
     if (!form.location.trim()) return 'La ubicación es obligatoria.';
+    if (!form.expires_at) return 'La fecha de vencimiento es obligatoria.';
+    if (form.expires_at < new Date().toISOString().slice(0, 10)) return 'La fecha de vencimiento no puede estar en el pasado.';
 
     if (form.salary_min && Number(form.salary_min) < 0) {
       return 'El salario mínimo no puede ser negativo.';
@@ -187,7 +187,8 @@ export default function CompanyJobsPage() {
       salary_max: job.salary_max ?? '',
       experience_years: job.experience_years ?? '',
       education_level: job.education_level || '',
-      skills_required: job.skills_required || ''
+      skills_required: job.skills_required || '',
+      expires_at: job.expires_at ? String(job.expires_at).slice(0, 10) : ''
     });
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -219,6 +220,21 @@ export default function CompanyJobsPage() {
     if (min && max) return `C$ ${Number(min).toLocaleString()} - C$ ${Number(max).toLocaleString()}`;
     if (min) return `Desde C$ ${Number(min).toLocaleString()}`;
     return `Hasta C$ ${Number(max).toLocaleString()}`;
+  };
+
+  const handleRepost = async (job) => {
+    const suggested = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const expiresAt = window.prompt('Nueva fecha de vencimiento (AAAA-MM-DD)', suggested);
+    if (!expiresAt) return;
+    try {
+      setChangingStatusId(job.id);
+      setError('');
+      await repostJob(job.id, expiresAt);
+      await loadJobs();
+      setMessage('Vacante reposteada como una publicación nueva.');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'No se pudo repostear la vacante');
+    } finally { setChangingStatusId(null); }
   };
 
   return (
@@ -310,6 +326,7 @@ export default function CompanyJobsPage() {
               />
 
               <TextField
+                select
                 label="Ubicación"
                 value={form.location}
                 onChange={(e) => setValue('location', e.target.value)}
@@ -322,12 +339,16 @@ export default function CompanyJobsPage() {
                     </InputAdornment>
                   )
                 }}
-              />
+              >
+                {departments.map((dept) => (
+                  <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+                ))}
+              </TextField>
 
               <TextField
                 select
                 label="Modalidad"
-                value={form.modality}
+                value={modalityOptions.some((option)=>option.value===form.modality) ? form.modality : ''}
                 onChange={(e) => setValue('modality', e.target.value)}
                 fullWidth
               >
@@ -339,6 +360,11 @@ export default function CompanyJobsPage() {
               </TextField>
 
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField label="Fecha de vencimiento" type="date" value={form.expires_at}
+                    onChange={(e) => setValue('expires_at', e.target.value)} InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: new Date().toISOString().slice(0, 10) }} required fullWidth />
+                </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Salario mínimo"
@@ -539,6 +565,7 @@ export default function CompanyJobsPage() {
                           label={`${job.applications_count || 0} postulantes`}
                           variant="outlined"
                         />
+                        {job.expires_at && <Chip label={`Vence: ${String(job.expires_at).slice(0, 10)}`} variant="outlined" />}
 
                         <Chip
                           icon={<AttachMoneyIcon />}
@@ -628,6 +655,9 @@ export default function CompanyJobsPage() {
                         >
                           Abrir
                         </Button>
+                      )}
+                      {(!isOpen || (job.expires_at && String(job.expires_at).slice(0, 10) < new Date().toISOString().slice(0, 10))) && (
+                        <Button variant="outlined" disabled={isChanging} onClick={() => handleRepost(job)} fullWidth>Repostear</Button>
                       )}
                     </Stack>
                   </Stack>

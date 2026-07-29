@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import { Link as RouterLink } from "react-router-dom";
 import EventIcon from "@mui/icons-material/Event";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -412,7 +413,16 @@ const [openDetail, setOpenDetail] = useState(false);
                         <Divider />
 
                         <Stack spacing={0.5}>
-                          <Typography fontWeight={800}>
+                          <Typography
+                            fontWeight={800}
+                            component={item.candidate_id ? RouterLink : "p"}
+                            to={item.candidate_id ? `/company/candidates/${item.candidate_id}` : undefined}
+                            sx={
+                              item.candidate_id
+                                ? { color: "inherit", textDecoration: "none", "&:hover": { textDecoration: "underline" } }
+                                : undefined
+                            }
+                          >
                             {item.candidate_name}
                           </Typography>
 

@@ -15,6 +15,7 @@ import CandidateDetailModal from "./components/CandidateDetailModal";
 
 import CandidateCard from "./components/CandidateCard";
 import { searchCandidates } from "../../api/company";
+import useCatalog from "../../hooks/useCatalog";
 
 const primary = "#0057B8";
 
@@ -38,6 +39,7 @@ export default function CandidateSearchTab({ candidates = [], jobs = [] }) {
 
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [openDetail, setOpenDetail] = useState(false);
+  const { labels: departments } = useCatalog("nicaragua_departments");
 
   const setFilter = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -212,12 +214,20 @@ export default function CandidateSearchTab({ candidates = [], jobs = [] }) {
 
         <Grid item xs={12} md={4}>
           <TextField
+            select
             fullWidth
             size="small"
             label="Ubicación"
             value={filters.location}
             onChange={(e) => setFilter("location", e.target.value)}
-          />
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {departments.map((dept) => (
+              <MenuItem key={dept} value={dept}>
+                {dept}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
 
         <Grid item xs={12} md={4}>

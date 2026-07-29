@@ -19,8 +19,10 @@ import { Link as RouterLink } from 'react-router-dom';
 import { searchCandidates } from '../../api/company';
 import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import { saveCandidateForCompany } from '../../api/company';
+import useCatalog from '../../hooks/useCatalog';
 
 export default function CompanyCandidatesPage() {
+  const { labels: departments } = useCatalog('nicaragua_departments');
   const [filters, setFilters] = useState({
     q: '',
     location: '',
@@ -79,10 +81,17 @@ export default function CompanyCandidatesPage() {
             />
 
             <TextField
+              select
               label="Ubicación"
               value={filters.location}
               onChange={(e) => setValue('location', e.target.value)}
-            />
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="">Todas</MenuItem>
+              {departments.map((dept) => (
+                <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+              ))}
+            </TextField>
 
             <TextField
               label="Experiencia mínima"
@@ -178,7 +187,12 @@ export default function CompanyCandidatesPage() {
                         </Avatar>
 
                         <Box flex={1}>
-                          <Typography fontWeight={900}>
+                          <Typography
+                            fontWeight={900}
+                            component={RouterLink}
+                            to={`/company/candidates/${candidate.id}`}
+                            sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                          >
                             #{index + 1} {candidate.name}
                           </Typography>
 
@@ -216,7 +230,14 @@ export default function CompanyCandidatesPage() {
                     <Box flex={1}>
                       <Stack direction="row" justifyContent="space-between" spacing={1}>
                         <Box>
-                          <Typography variant="h6">{row.name}</Typography>
+                          <Typography
+                            variant="h6"
+                            component={RouterLink}
+                            to={`/company/candidates/${row.id}`}
+                            sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            {row.name}
+                          </Typography>
                           <Typography color="primary.main" fontWeight={800}>
                             {row.headline}
                           </Typography>

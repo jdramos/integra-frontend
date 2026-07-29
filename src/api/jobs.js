@@ -29,6 +29,7 @@ export const updateJobStatus = async (id, status) => {
   const { data } = await api.patch(`/company/jobs/${id}/status`, { status });
   return data.data;
 };
+export const repostJob = async (id, expires_at) => (await api.post(`/company/jobs/${id}/repost`, { expires_at })).data.data;
 
 export const applyToJob = async (jobId, payload) => {
   const { data } = await api.post(`/candidate/jobs/${jobId}/apply`, payload);
@@ -75,6 +76,10 @@ export const getJobPipelineAnalytics = async (jobId) => {
   const res = await api.get(`/company/jobs/${jobId}/analytics/pipeline`);
   return res.data.data || [];
 };
+export const getSavedJobIds = async () => (await api.get('/candidate/saved-jobs')).data.data || [];
+export const saveJob = async (jobId) => (await api.put(`/candidate/saved-jobs/${jobId}`)).data.data;
+export const unsaveJob = async (jobId) => (await api.delete(`/candidate/saved-jobs/${jobId}`)).data.data;
+export const reportJob = async (jobId,payload) => (await api.post(`/jobs/${jobId}/report`,payload)).data.data;
 
 export const getApplicationHistory = async (applicationId) => {
   const res = await api.get(

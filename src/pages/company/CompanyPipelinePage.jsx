@@ -93,6 +93,7 @@ export default function CompanyPipelinePage() {
   const [interviewCandidate, setInterviewCandidate] = useState(null);
 
   const [stats, setStats] = useState({});
+  const [movingApplicationId, setMovingApplicationId] = useState(null);
 
   useEffect(() => {
     loadJobs();
@@ -144,6 +145,7 @@ export default function CompanyPipelinePage() {
 
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
+    if (movingApplicationId) return;
 
     const sourceColumn = result.source.droppableId;
     const destinationColumn = result.destination.droppableId;
@@ -155,9 +157,14 @@ export default function CompanyPipelinePage() {
 
     const [movedItem] = sourceItems.splice(result.source.index, 1);
 
-    movedItem.status = destinationColumn;
+    if (!movedItem?.application_id) {
+      setError("No se pudo identificar la postulación movida.");
+      return;
+    }
 
-    destinationItems.splice(result.destination.index, 0, movedItem);
+    const movedApplication = { ...movedItem, status: destinationColumn };
+
+    destinationItems.splice(result.destination.index, 0, movedApplication);
 
     const updatedPipeline = {
       ...pipeline,
@@ -166,6 +173,9 @@ export default function CompanyPipelinePage() {
     };
 
     setPipeline(updatedPipeline);
+    setMovingApplicationId(movedItem.application_id);
+    setError("");
+    setMessage("");
 
     try {
       await updateApplicationStatus(
@@ -174,10 +184,14 @@ export default function CompanyPipelinePage() {
       );
 
       setMessage("Pipeline actualizado correctamente.");
+      const statsData = await getPipelineStats(jobId);
+      setStats(statsData || {});
     } catch (err) {
       console.error(err);
-      setError("No se pudo actualizar el pipeline.");
+      setError(err?.response?.data?.message || "No se pudo actualizar el pipeline.");
       await loadPipeline(jobId);
+    } finally {
+      setMovingApplicationId(null);
     }
   };
 
@@ -398,6 +412,7 @@ export default function CompanyPipelinePage() {
                               key={candidate.application_id}
                               draggableId={String(candidate.application_id)}
                               index={index}
+                              isDragDisabled={Boolean(movingApplicationId)}
                             >
                               {(provided, snapshot) => (
                                 <Paper

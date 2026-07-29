@@ -37,6 +37,7 @@ import {
   searchCandidates,
 } from "../../api/company";
 import JobFormModal from "./components/JobFormModal";
+import OnboardingChecklist from "../../components/common/OnboardingChecklist";
 
 const primary = "#0057B8";
 const primaryDark = "#003E8A";
@@ -276,6 +277,18 @@ const normalizedJobs = useMemo(() => {
           </Stack>
         </Stack>
       </Paper>
+
+      <Box mb={3}>
+        <OnboardingChecklist
+          title="Configura tu empresa"
+          description="Completa estos pasos para generar confianza y comenzar a recibir candidatos."
+          steps={[
+            { label: "Completa ubicación, sitio web y descripción", complete: Boolean(company?.location && company?.website && company?.description), onClick: () => setTab(1) },
+            { label: "Agrega el logotipo de la empresa", complete: Boolean(company?.logo_url), onClick: () => setTab(1) },
+            { label: "Publica tu primera vacante", complete: jobs.length > 0, onClick: () => { setEditingJob(null); setOpenJobModal(true); } },
+          ]}
+        />
+      </Box>
 
       <Grid container spacing={2} mb={3}>
         <Grid item xs={12} md={3}>

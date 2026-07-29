@@ -200,6 +200,7 @@ export default function CompaniesTable({
                 <TableCell sx={{ fontWeight: 900 }}>Empresa</TableCell>
                 <TableCell sx={{ fontWeight: 900 }}>Ubicación</TableCell>
                 <TableCell sx={{ fontWeight: 900 }}>Plan</TableCell>
+                <TableCell sx={{ fontWeight: 900 }}>Próximo cobro</TableCell>
                 <TableCell sx={{ fontWeight: 900 }}>Estado</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 900 }}>
                   Acciones
@@ -248,6 +249,19 @@ export default function CompaniesTable({
                       variant={company.plan_name ? "filled" : "outlined"}
                       sx={{ fontWeight: 800, height: 22 }}
                     />
+                  </TableCell>
+
+                  <TableCell sx={{ fontSize: 13 }}>
+                    {company.next_billing_date ? (
+                      <>
+                        {new Date(company.next_billing_date).toLocaleDateString("es-NI", { day: "2-digit", month: "short", year: "numeric" })}
+                        <Typography component="span" display="block" fontSize={11} color="text.secondary">
+                          {BILLING_CYCLE_LABELS[company.billing_cycle] || company.billing_cycle}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography fontSize={13} color="text.secondary">Sin programar</Typography>
+                    )}
                   </TableCell>
 
                   <TableCell>
@@ -323,6 +337,8 @@ export default function CompaniesTable({
     </Paper>
   );
 }
+
+const BILLING_CYCLE_LABELS = { MONTHLY: "Mensual", QUARTERLY: "Trimestral", SEMIANNUAL: "Semestral", YEARLY: "Anual" };
 
 export function getStatusLabel(status) {
   const value = String(status || "").toUpperCase();

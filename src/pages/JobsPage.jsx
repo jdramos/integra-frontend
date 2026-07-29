@@ -9,25 +9,34 @@ import {
   Stack,
   Typography
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import WorkIcon from '@mui/icons-material/Work';
 
-import { applyToJob, getPublicJobs } from '../api/jobs';
+import { applyToJob, getPublicJobs, getSavedJobIds, saveJob, unsaveJob, reportJob } from '../api/jobs';
 import useAuth from '../auth/AuthContext';
 import JobDetailPanel from '../components/jobs/JobDetailPanel';
-
-const brandBlue = '#0B66C3';
+import ApplicationQuestionsDialog from '../components/jobs/ApplicationQuestionsDialog';
+import { useSearchParams } from 'react-router-dom';
 
 export default function JobsPage() {
+  const theme = useTheme();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [filters, setFilters] = useState({ q: '', location: '', modality: '' });
+  const [filters, setFilters] = useState(() => ({
+    q: searchParams.get('q') || '',
+    location: searchParams.get('location') || '',
+    modality: searchParams.get('modality') || ''
+  }));
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [savedJobs, setSavedJobs] = useState([]);
   const [viewedJobs, setViewedJobs] = useState([]);
+  const [applyingJob, setApplyingJob] = useState(null);
+  const [applying, setApplying] = useState(false);
 
   const setValue = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
@@ -141,14 +150,12 @@ export default function JobsPage() {
     });
   };
 
-  const toggleSaveJob = (jobId) => {
-    setSavedJobs((prev) => {
-      if (prev.includes(jobId)) {
-        return prev.filter((id) => id !== jobId);
-      }
-
-      return [...prev, jobId];
-    });
+  const toggleSaveJob = async (jobId) => {
+    const saved = savedJobs.includes(jobId);
+    setSavedJobs((prev) => saved ? prev.filter((id) => id !== jobId) : [...prev, jobId]);
+    if (user?.role !== 'CANDIDATE') return;
+    try { if (saved) await unsaveJob(jobId); else await saveJob(jobId); }
+    catch { setSavedJobs((prev) => saved ? [...prev, jobId] : prev.filter((id) => id !== jobId)); }
   };
 
   const loadJobs = async () => {
@@ -172,9 +179,17 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    loadJobs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setFilters((current) => ({
+      ...current,
+      q: searchParams.get('q') || '',
+      location: searchParams.get('location') || '',
+      modality: searchParams.get('modality') || current.modality
+    }));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user?.role === 'CANDIDATE') getSavedJobIds().then(setSavedJobs).catch(() => {});
+  }, [user?.role]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -185,26 +200,48 @@ export default function JobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const handleApply = async (jobId) => {
+  const handleApply = async (job) => {
+    if (job?.screening_questions?.length) {
+      setApplyingJob(job);
+      return;
+    }
+    await submitApplication(job.id, []);
+  };
+
+  const submitApplication = async (jobId, answers) => {
     setMessage('');
     setError('');
 
     try {
+      setApplying(true);
       await applyToJob(jobId, {
-        cover_letter: 'Estoy interesado en esta vacante.'
+        cover_letter: 'Estoy interesado en esta vacante.',
+        answers
       });
 
       setMessage('Postulación enviada correctamente.');
+      setApplyingJob(null);
     } catch (err) {
       setError(err?.response?.data?.message || 'No se pudo enviar la postulación');
+    } finally {
+      setApplying(false);
     }
+  };
+
+  const handleReport = async (jobId) => {
+    const details = window.prompt('Describe brevemente el problema con esta vacante:');
+    if (!details) return;
+    try { await reportJob(jobId, { reason: 'CONTENT', details }); setMessage('Reporte enviado para revisión.'); }
+    catch (err) { setError(err?.response?.data?.message || 'No se pudo enviar el reporte'); }
   };
 
   return (
     <Box
       sx={{
         minHeight: 'calc(100vh - 68px)',
-        background: 'linear-gradient(180deg, #f4f8ff 0%, #f7f8fb 240px, #ffffff 100%)'
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(180deg, ${alpha(theme.palette.primary.dark, 0.18)} 0%, ${theme.palette.background.default} 260px)`
+          : 'linear-gradient(180deg, #f4f8ff 0%, #f7f8fb 240px, #ffffff 100%)'
       }}
     >
       {message && (
@@ -233,7 +270,7 @@ export default function JobsPage() {
       >
         <Box
           sx={{
-            bgcolor: '#fff',
+            bgcolor: 'background.paper',
             border: '1px solid',
             borderColor: 'rgba(15,23,42,0.08)',
             borderRadius: 4,
@@ -321,13 +358,15 @@ export default function JobsPage() {
                     sx={{
                       p: 2,
                       cursor: 'pointer',
-                      bgcolor: selected ? '#EEF6FF' : '#fff',
-                      borderLeft: selected ? `4px solid ${brandBlue}` : '4px solid transparent',
+                      bgcolor: selected ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.08) : 'background.paper',
+                      borderLeft: selected ? `4px solid ${theme.palette.primary.main}` : '4px solid transparent',
                       borderBottom: '1px solid rgba(15,23,42,0.08)',
                       boxShadow: selected ? 'inset 0 0 0 1px rgba(11,102,195,0.15)' : 'none',
                       transition: 'all .18s ease',
                       '&:hover': {
-                        bgcolor: selected ? '#EEF6FF' : '#f8fbff',
+                        bgcolor: selected
+                          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.26 : 0.08)
+                          : alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.10 : 0.03),
                         transform: 'translateX(2px)'
                       }
                     }}
@@ -339,7 +378,7 @@ export default function JobsPage() {
                         sx={{
                           width: 62,
                           height: 62,
-                          bgcolor: brandBlue,
+                          bgcolor: 'primary.main',
                           borderRadius: 3
                         }}
                       >
@@ -350,7 +389,7 @@ export default function JobsPage() {
                         <Stack direction="row" alignItems="center" spacing={1}>
                           <Typography
                             fontWeight={900}
-                            color={brandBlue}
+                            color="primary.main"
                             sx={{ fontSize: 17 }}
                             noWrap
                           >
@@ -434,6 +473,7 @@ export default function JobsPage() {
           job={selectedJob}
           user={user}
           onApply={handleApply}
+          onReport={handleReport}
           formatDate={formatDate}
           getDaysAgo={getDaysAgo}
           getJobStatusLabel={getJobStatusLabel}
@@ -444,6 +484,13 @@ export default function JobsPage() {
           getMatchColor={getMatchColor}
           savedJobs={savedJobs}
           toggleSaveJob={toggleSaveJob}
+        />
+        <ApplicationQuestionsDialog
+          job={applyingJob}
+          open={Boolean(applyingJob)}
+          loading={applying}
+          onClose={() => setApplyingJob(null)}
+          onSubmit={(answers) => submitApplication(applyingJob.id, answers)}
         />
       </Box>
     </Box>
